@@ -142,8 +142,8 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const tl=n=>new Intl.NumberFormat("tr-TR",{maximumFractionDigits:2}).format(n)+" ₺";
 const num=v=>{v=String(v||"").trim().replace(/\s/g,"");if(!v)return 0;if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");else if(/^\d{1,3}(\.\d{3})+$/.test(v))v=v.replace(/\./g,"");const n=parseFloat(v);return isFinite(n)?n:0};
-const UNITS={TL:{n:"₺ Türk lirası",s:"₺",l:"Tutar (₺)",q:[500,1000]},G24:{n:"Gram altın (24 ayar)",s:"gr 24 ayar",k:"GRA",l:"Miktar (gram)",q:[1,5]},G22:{n:"22 ayar bilezik (gram)",s:"gr 22 ayar",k:"YIA",l:"Miktar (gram)",q:[1,5]},USD:{n:"Dolar ($)",s:"$",k:"USD",l:"Miktar ($)",q:[50,100]},EUR:{n:"Euro (€)",s:"€",k:"EUR",l:"Miktar (€)",q:[50,100]}};
-const MK=[["GRA","Gram altın","24 ayar"],["YIA","22 ayar bilezik","gram"],["USD","Dolar","USD / TL"],["EUR","Euro","EUR / TL"]];
+const UNITS={TL:{n:"₺ Türk lirası",s:"₺",l:"Tutar (₺)",q:[500,1000]},G24:{n:"Gram altın (24 ayar)",s:"gr 24 ayar",k:"GRA",l:"Miktar (gram)",q:[1,5]},G22:{n:"22 ayar bilezik (gram)",s:"gr 22 ayar",k:"YIA",l:"Miktar (gram)",q:[1,5]},CEY:{n:"Çeyrek altın (adet)",s:"adet çeyrek",k:"CEYREKALTIN",l:"Miktar (adet)",q:[1,2]},CUM:{n:"Cumhuriyet altını (adet)",s:"adet cumhuriyet",k:"CUMHURIYETALTINI",l:"Miktar (adet)",q:[1,2]},USD:{n:"Dolar ($)",s:"$",k:"USD",l:"Miktar ($)",q:[50,100]},EUR:{n:"Euro (€)",s:"€",k:"EUR",l:"Miktar (€)",q:[50,100]}};
+const MK=[["GRA","Gram altın","24 ayar"],["YIA","22 ayar bilezik","gram"],["CEYREKALTIN","Çeyrek altın","adet"],["CUMHURIYETALTINI","Cumhuriyet altını","adet"],["USD","Dolar","USD / TL"],["EUR","Euro","EUR / TL"]];
 const fq=n=>new Intl.NumberFormat("tr-TR",{maximumFractionDigits:3}).format(n);
 let px=null;
 try{px=JSON.parse(localStorage.getItem("borc-px-v1")||"null")}catch(e){}
@@ -246,7 +246,7 @@ function stamp(){if(!px)return "";const t=px.t?px.t.replace(/^(\d{4})-(\d{2})-(\
 let loading=false;
 async function loadPx(){if(loading)return;loading=true;$("mkR").textContent="…";
   try{const j=JSON.parse(await httpGet(SRC));const d={};
-    for(const k of ["GRA","YIA","USD","EUR"]){const o=j[k];if(o&&o.Selling!=null)d[k]={b:pn(o.Buying),s:pn(o.Selling),c:pn(o.Change)}}
+    for(const k of ["GRA","YIA","CEYREKALTIN","CUMHURIYETALTINI","USD","EUR"]){const o=j[k];if(o&&o.Selling!=null)d[k]={b:pn(o.Buying),s:pn(o.Selling),c:pn(o.Change)}}
     if(!d.GRA&&!d.USD)throw new Error("veri yok");
     px={t:String(j.Update_Date||""),at:Date.now(),d};try{localStorage.setItem("borc-px-v1",JSON.stringify(px))}catch(e){}
     $("mkN").textContent=`Kaynak: Truncgil Finans · son güncelleme ${stamp()} · her dakika yenilenir`;render();
