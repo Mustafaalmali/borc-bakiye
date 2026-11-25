@@ -61,6 +61,14 @@ input,select{width:100%;height:48px;border:1px solid var(--line);border-radius:1
 .acts .del{color:var(--debt)}
 .quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .quick button{height:36px;border-radius:18px;border:1px solid var(--line);background:var(--plane);color:var(--ink);font:500 14px "Hanken Grotesk",sans-serif;padding:0 12px;cursor:pointer}
+.mk{margin-top:22px}
+.mkh{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px}.mkh h2{font-size:20px;margin:0}
+.mkh button{height:40px;border-radius:20px;border:1px solid var(--line);background:none;color:var(--ink);font:500 14px "Hanken Grotesk",system-ui,sans-serif;padding:0 16px;cursor:pointer}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{background:var(--plane);border-radius:14px;padding:12px 14px}
+.tile .t{font-size:13px;color:var(--mut)}.tile .v{font-size:clamp(19px,5.5vw,24px);font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile .s{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.up{color:var(--plus)}.dn{color:var(--debt)}
+.mkn{font-size:12px;color:var(--mut);margin:8px 2px 0}
 @media(prefers-reduced-motion:reduce){.scale i{transition:none}}
 </style>
 </head>
@@ -76,6 +84,12 @@ input,select{width:100%;height:48px;border:1px solid var(--line);border-radius:1
       <div class="p"><div class="lbl">Varlık (+)</div><b id="tp">0 ₺</b></div>
       <div class="d" style="text-align:right"><div class="lbl">Toplam borç</div><b id="td">0 ₺</b></div>
     </div>
+  </section>
+
+  <section class="mk" aria-label="Piyasa fiyatları">
+    <div class="mkh"><h2>Piyasa</h2><button id="mkR" type="button">Yenile</button></div>
+    <div class="tiles" id="tiles"></div>
+    <p class="mkn" id="mkN">Fiyatlar yükleniyor…</p>
   </section>
 
   <div class="tabs" role="group" aria-label="Liste">
@@ -100,12 +114,12 @@ input,select{width:100%;height:48px;border:1px solid var(--line);border-radius:1
     <input id="fName" required maxlength="40" placeholder="Örn. Bonus Kart, İhtiyaç kredisi, Ziraat hesabı">
     <label for="fType">Çeşit</label>
     <select id="fType"></select>
-    <label for="fAmt">Tutar (₺)</label>
-    <input id="fAmt" inputmode="decimal" required placeholder="0">
-    <div class="quick" id="quick" hidden>
-      <button type="button" data-q="-1000">−1.000</button><button type="button" data-q="-500">−500</button>
-      <button type="button" data-q="500">+500</button><button type="button" data-q="1000">+1.000</button>
+    <div class="g2">
+      <div><label for="fAmt" id="fAmtL">Tutar (₺)</label><input id="fAmt" inputmode="decimal" required placeholder="0"></div>
+      <div><label for="fUnit">Birim</label><select id="fUnit"></select></div>
     </div>
+    <p class="mkn" id="fConv"></p>
+    <div class="quick" id="quick" hidden></div>
     <div class="g2" id="debtX">
       <div><label for="fLim">Kart limiti (₺)</label><input id="fLim" inputmode="decimal" placeholder="İsteğe bağlı"></div>
       <div><label for="fDue">Son ödeme günü</label><input id="fDue" inputmode="numeric" placeholder="1–31"></div>
@@ -128,6 +142,14 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const tl=n=>new Intl.NumberFormat("tr-TR",{maximumFractionDigits:2}).format(n)+" ₺";
 const num=v=>{v=String(v||"").trim().replace(/\s/g,"");if(!v)return 0;if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");else if(/^\d{1,3}(\.\d{3})+$/.test(v))v=v.replace(/\./g,"");const n=parseFloat(v);return isFinite(n)?n:0};
+const UNITS={TL:{n:"₺ Türk lirası",s:"₺",l:"Tutar (₺)",q:[500,1000]},G24:{n:"Gram altın (24 ayar)",s:"gr 24 ayar",k:"GRA",l:"Miktar (gram)",q:[1,5]},G22:{n:"22 ayar bilezik (gram)",s:"gr 22 ayar",k:"YIA",l:"Miktar (gram)",q:[1,5]},USD:{n:"Dolar ($)",s:"$",k:"USD",l:"Miktar ($)",q:[50,100]},EUR:{n:"Euro (€)",s:"€",k:"EUR",l:"Miktar (€)",q:[50,100]}};
+const MK=[["GRA","Gram altın","24 ayar"],["YIA","22 ayar bilezik","gram"],["USD","Dolar","USD / TL"],["EUR","Euro","EUR / TL"]];
+const fq=n=>new Intl.NumberFormat("tr-TR",{maximumFractionDigits:3}).format(n);
+let px=null;
+try{px=JSON.parse(localStorage.getItem("borc-px-v1")||"null")}catch(e){}
+// Varlık: kuyumcu/döviz bürosunun ALIŞ fiyatı (bozdurursan eline geçen). Borç: SATIŞ fiyatı (kapatmak için ödeyeceğin).
+function rate(u,k){if(!u||u==="TL")return 1;const p=px&&px.d&&px.d[UNITS[u].k];if(!p)return null;return k==="d"?p.s:p.b}
+function val(i){const r=rate(i.u,i.k);return r==null?0:i.a*r}
 let items=[],tab="d",kind="d",editId=null,ref=null,saving=Promise.resolve();
 const LS="borc-bakiye-v1";
 
@@ -136,33 +158,45 @@ function daysTo(day){if(!day)return null;const t=new Date();t.setHours(0,0,0,0);
 
 function render(){
   const D=items.filter(i=>i.k==="d"),P=items.filter(i=>i.k==="p");
-  const td=D.reduce((s,i)=>s+i.a,0),tp=P.reduce((s,i)=>s+i.a,0),net=tp-td;
+  const td=D.reduce((s,i)=>s+val(i),0),tp=P.reduce((s,i)=>s+val(i),0),net=tp-td;
   $("td").textContent=tl(td);$("tp").textContent=tl(tp);
   const n=$("net");n.textContent=(net>0?"+":"")+tl(net);n.className="net "+(net<0?"neg":net>0?"pos":"");
   $("verdict").textContent=!items.length?"Henüz kayıt yok. Aşağıdan ilk kartını ekle.":net<0?`Varlıkların borcunun ${tl(-net)} gerisinde.`:net>0?`Tüm borçları kapatsan ${tl(net)} artıda kalırsın.`:"Borçların ve varlıkların eşit.";
   const tot=td+tp||1;$("sp").style.width=(tp/tot*100)+"%";$("sd").style.width=(td/tot*100)+"%";
-  const L=(tab==="d"?D:P).slice().sort((a,b)=>b.a-a.a);
+  const L=(tab==="d"?D:P).slice().sort((a,b)=>val(b)-val(a));
   $("secT").textContent=tab==="d"?"Borçlar":"Varlıklar";
   $("secS").textContent=L.length?`${L.length} kayıt · ${tl(tab==="d"?td:tp)}`:"";
   if(tab==="d"){const mins=D.reduce((s,i)=>s+(i.m||0),0);if(mins)$("secS").textContent+=` · aylık ${tl(mins)}`}
   $("list").innerHTML=L.length?L.map(i=>{
     const dt=i.k==="d"?daysTo(i.due):null;
     const bits=[esc(i.t)];
+    if(i.u&&i.u!=="TL"){const r=rate(i.u,i.k);bits.unshift(`<b>${fq(i.a)} ${UNITS[i.u].s}</b>`+(r==null?" · fiyat bekleniyor":` × ${tl(r)}`))}
     if(dt!==null)bits.push(dt<=5?`<span class="due">Ödeme ${dt===0?"bugün":dt+" gün sonra"}</span>`:`Son ödeme: ayın ${i.due}'i`);
     if(i.m)bits.push("Aylık "+tl(i.m));
-    if(i.l)bits.push(`Limit ${tl(i.l)} · kalan ${tl(Math.max(0,i.l-i.a))}`);
+    if(i.l)bits.push(`Limit ${tl(i.l)} · kalan ${tl(Math.max(0,i.l-val(i)))}`);
     if(i.n)bits.push(esc(i.n));
-    return `<li class="it" tabindex="0" data-id="${esc(i.id)}"><div class="row"><span class="nm">${esc(i.name)}</span><span class="am ${i.k}">${i.k==="d"?"−":"+"}${tl(i.a)}</span></div><div class="sub">${bits.map(b=>`<span>${b}</span>`).join("")}</div>${i.l?`<div class="bar"><i style="width:${Math.min(100,i.a/i.l*100)}%"></i></div>`:""}</li>`}).join(""):`<li class="empty">${tab==="d"?"Borç kaydı yok. Kredi kartı, kredi ya da kişiye borcunu ekle.":"Varlık yok. Banka hesabı, nakit ya da alacağını ekle."}</li>`;
+    return `<li class="it" tabindex="0" data-id="${esc(i.id)}"><div class="row"><span class="nm">${esc(i.name)}</span><span class="am ${i.k}">${i.k==="d"?"−":"+"}${tl(val(i))}</span></div><div class="sub">${bits.map(b=>`<span>${b}</span>`).join("")}</div>${i.l?`<div class="bar"><i style="width:${Math.min(100,val(i)/i.l*100)}%"></i></div>`:""}</li>`}).join(""):`<li class="empty">${tab==="d"?"Borç kaydı yok. Kredi kartı, kredi ya da kişiye borcunu ekle.":"Varlık yok. Banka hesabı, nakit, gram altın ya da dövizini ekle."}</li>`;
+  renderMk();
+}
+function renderMk(){
+  $("tiles").innerHTML=MK.map(([k,t,s])=>{const p=px&&px.d&&px.d[k];
+    if(!p)return `<div class="tile"><div class="t">${t}</div><div class="v">—</div><div class="s">${s}</div></div>`;
+    const c=p.c||0;
+    return `<div class="tile"><div class="t">${t} <span class="${c>0?"up":c<0?"dn":""}">${c>0?"▲":c<0?"▼":""} %${fq(Math.abs(c))}</span></div><div class="v">${tl(p.s)}</div><div class="s">Alış ${tl(p.b)} · ${s}</div></div>`}).join("");
 }
 
 function setTab(t){tab=t;$("tabD").setAttribute("aria-pressed",t==="d");$("tabP").setAttribute("aria-pressed",t==="p");render()}
 function setKind(k){kind=k;$("kD").setAttribute("aria-pressed",k==="d");$("kP").setAttribute("aria-pressed",k==="p");
   const cur=$("fType").value;$("fType").innerHTML=TYPES[k].map(t=>`<option>${t}</option>`).join("");if(TYPES[k].includes(cur))$("fType").value=cur;
   $("debtX").hidden=k!=="d";$("minX").hidden=k!=="d"}
+function unitChanged(){const u=UNITS[$("fUnit").value]||UNITS.TL;$("fAmtL").textContent=u.l;
+  $("quick").innerHTML=[-u.q[1],-u.q[0],u.q[0],u.q[1]].map(q=>`<button type="button" data-q="${q}">${q>0?"+":"−"}${fq(Math.abs(q))}</button>`).join("");conv()}
+function conv(){const u=$("fUnit").value;if(u==="TL"){$("fConv").textContent="";return}const r=rate(u,kind);const a=num($("fAmt").value);
+  $("fConv").textContent=r==null?"Fiyat henüz alınamadı; internet gelince TL karşılığı hesaplanır.":`≈ ${tl(a*r)} (${kind==="d"?"satış":"alış"} fiyatı ${tl(r)})`}
 function open(id){
   editId=id||null;const i=items.find(x=>x.id===id);
   setKind(i?i.k:tab);$("fT").textContent=i?"Düzenle":"Yeni kayıt";
-  $("fName").value=i?.name||"";if(i)$("fType").value=i.t;$("fAmt").value=i?String(i.a).replace(".",","):"";
+  $("fUnit").value=i?.u||"TL";unitChanged();$("fName").value=i?.name||"";if(i)$("fType").value=i.t;$("fAmt").value=i?String(i.a).replace(".",","):"";
   $("fLim").value=i?.l?String(i.l).replace(".",","):"";$("fDue").value=i?.due||"";$("fMin").value=i?.m?String(i.m).replace(".",","):"";$("fNote").value=i?.n||"";
   $("del").hidden=!i;$("quick").hidden=!i;$("sheet").classList.add("on");setTimeout(()=>$(i?"fAmt":"fName").focus(),50)}
 function close(){$("sheet").classList.remove("on")}
@@ -177,7 +211,7 @@ function persist(){
 $("form").addEventListener("submit",e=>{e.preventDefault();
   const name=$("fName").value.trim();if(!name)return;
   const due=parseInt($("fDue").value,10);
-  const rec={id:editId||Date.now().toString(36)+Math.random().toString(36).slice(2,6),k:kind,name,t:$("fType").value,a:Math.abs(num($("fAmt").value)),
+  const rec={id:editId||Date.now().toString(36)+Math.random().toString(36).slice(2,6),k:kind,name,t:$("fType").value,a:Math.abs(num($("fAmt").value)),u:$("fUnit").value,
     l:kind==="d"?num($("fLim").value)||0:0,due:kind==="d"&&due>=1&&due<=31?due:0,m:kind==="d"?num($("fMin").value)||0:0,n:$("fNote").value.trim()};
   items=editId?items.map(x=>x.id===editId?rec:x):items.concat(rec);
   close();setTab(kind);persist()});
@@ -186,9 +220,11 @@ $("del").addEventListener("click",()=>{if($("del").dataset.sure!=="1"){$("del").
 $("cancel").addEventListener("click",close);
 $("sheet").addEventListener("click",e=>{if(e.target.id==="sheet")close()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
-$("quick").addEventListener("click",e=>{const q=e.target.dataset.q;if(!q)return;$("fAmt").value=String(Math.max(0,num($("fAmt").value)+Number(q))).replace(".",",")});
+$("quick").addEventListener("click",e=>{const q=e.target.dataset.q;if(!q)return;$("fAmt").value=String(Math.round(Math.max(0,num($("fAmt").value)+Number(q))*1000)/1000).replace(".",",");conv()});
+$("fUnit").innerHTML=Object.entries(UNITS).map(([k,u])=>`<option value="${k}">${u.n}</option>`).join("");
+$("fUnit").addEventListener("change",unitChanged);$("fAmt").addEventListener("input",conv);
 $("add").addEventListener("click",()=>open());
-$("kD").addEventListener("click",()=>setKind("d"));$("kP").addEventListener("click",()=>setKind("p"));
+$("kD").addEventListener("click",()=>{setKind("d");conv()});$("kP").addEventListener("click",()=>{setKind("p");conv()});
 $("tabD").addEventListener("click",()=>setTab("d"));$("tabP").addEventListener("click",()=>setTab("p"));
 const pick=e=>{const li=e.target.closest("li.it");if(li){$("del").dataset.sure="";$("del").textContent="Sil";open(li.dataset.id)}};
 $("list").addEventListener("click",pick);$("list").addEventListener("keydown",e=>{if(e.key==="Enter")pick(e)});
@@ -197,6 +233,30 @@ try{const s=JSON.parse(localStorage.getItem(LS)||"[]");if(Array.isArray(s))items
 setKind("d");render();
 
 $("status").textContent="Veriler bu telefonda saklanıyor.";
+const SRC="https://finans.truncgil.com/v4/today.json";
+window.__cb={};
+window.__res=(id,ok,body)=>{const f=window.__cb[id];if(f){delete window.__cb[id];f(ok,body)}};
+function httpGet(url){return new Promise((res,rej)=>{
+  if(window.Android&&window.Android.get){const id="r"+Date.now()+Math.random().toString(36).slice(2,7);
+    const t=setTimeout(()=>{delete window.__cb[id];rej(new Error("zaman aşımı"))},20000);
+    window.__cb[id]=(ok,body)=>{clearTimeout(t);ok?res(body):rej(new Error(body))};window.Android.get(url,id)}
+  else fetch(url,{cache:"no-store"}).then(r=>r.ok?r.text():Promise.reject(new Error("HTTP "+r.status))).then(res,rej)})}
+const pn=v=>typeof v==="number"?v:num(String(v||"").replace("%",""));
+function stamp(){if(!px)return "";const t=px.t?px.t.replace(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}).*$/,"$3.$2.$1 $4"):"";return t}
+let loading=false;
+async function loadPx(){if(loading)return;loading=true;$("mkR").textContent="…";
+  try{const j=JSON.parse(await httpGet(SRC));const d={};
+    for(const k of ["GRA","YIA","USD","EUR"]){const o=j[k];if(o&&o.Selling!=null)d[k]={b:pn(o.Buying),s:pn(o.Selling),c:pn(o.Change)}}
+    if(!d.GRA&&!d.USD)throw new Error("veri yok");
+    px={t:String(j.Update_Date||""),at:Date.now(),d};try{localStorage.setItem("borc-px-v1",JSON.stringify(px))}catch(e){}
+    $("mkN").textContent=`Kaynak: Truncgil Finans · son güncelleme ${stamp()} · her dakika yenilenir`;render();
+  }catch(e){$("mkN").textContent=px?`Fiyatlar şu an alınamadı, son bilinen fiyatlar (${stamp()}) kullanılıyor.`:"Fiyatlar alınamadı. İnternet bağlantını kontrol edip Yenile'ye bas."}
+  finally{loading=false;$("mkR").textContent="Yenile"}}
+$("mkR").addEventListener("click",loadPx);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")loadPx()});
+setInterval(()=>{if(document.visibilityState==="visible")loadPx()},60000);
+if(px)$("mkN").textContent=`Son bilinen fiyatlar (${stamp()}) · güncelleniyor…`;
+renderMk();loadPx();
 window.__back=()=>{if($("sheet").classList.contains("on")){close();return true}return false};
 }
 </script>
