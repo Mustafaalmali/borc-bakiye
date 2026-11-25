@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sarı zemin üzerinde siyah kart: borç/bakiye simgesi -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#111111"
+        android:pathData="M32,38h44a5,5 0,0 1,5 5v26a5,5 0,0 1,-5 5h-44a5,5 0,0 1,-5 -5v-26a5,5 0,0 1,5 -5z" />
+    <path android:fillColor="#FFE600" android:pathData="M27,45h54v7h-54z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M34,60h18v4h-18z" />
+</vector>

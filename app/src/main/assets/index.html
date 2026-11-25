@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Borç ve Bakiye</title>
+<style>
+/* VOICE: sakin, net, cep defteri gibi — tek bakışta durum
+   IDEA: banka ekstresi / cüzdan özeti
+   PICTURE: büyük NET rakam + borç/varlık terazisi çubuğu, altında kart listesi
+   COLOUR and TYPE: beyaz, siyah, beton gri düzlemler, tek vurgu sarı #ffe600; borç kırmızımsı; Hanken Grotesk
+   LAYOUT: tek sütun, telefon önce; alttan açılan düzenleme paneli */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#1a1a19);--ink:light-dark(#111,#f2f2ee);--mut:light-dark(#66665f,#a3a39b);--plane:light-dark(#ececE8,#252523);--line:light-dark(#d8d8d4,#3a3a37);--acc:#ffe600;--debt:light-dark(#c8371e,#ff7a5c);--plus:light-dark(#1d7a46,#5fd08f)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Hanken Grotesk",system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:560px;margin:0 auto;padding:20px max(4vw,16px) 120px}
+h1{font-size:15px;font-weight:500;margin:0 0 14px;color:var(--mut)}
+.hero{background:var(--plane);border-radius:18px;padding:22px 20px}
+.lbl{font-size:13px;color:var(--mut)}
+.net{font-size:clamp(36px,11vw,52px);font-weight:700;line-height:1.05;margin:4px 0 2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.net.neg{color:var(--debt)}.net.pos{color:var(--plus)}
+.verdict{font-size:15px;margin:0 0 18px}
+.scale{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line)}
+.scale i{display:block;height:100%;transition:width .5s}
+.scale .d{background:var(--debt)}.scale .p{background:var(--plus)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:14px}
+.two b{display:block;font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.two .d b{color:var(--debt)}.two .p b{color:var(--plus)}
+.tabs{display:flex;gap:8px;margin:26px 0 12px}
+.tabs button{flex:1;height:44px;border-radius:22px;border:1px solid var(--line);background:none;color:var(--ink);font:500 15px inherit;font-family:inherit;cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:6px 2px 8px}
+.sec h2{font-size:20px;margin:0}.sec span{color:var(--mut);font-size:14px;white-space:nowrap}
+ul{list-style:none;margin:0;padding:0}
+li.it{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:inherit;padding:14px 2px;cursor:pointer}
+li.it:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.am{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.am.d{color:var(--debt)}.am.p{color:var(--plus)}
+.sub{font-size:13px;color:var(--mut);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.due{background:var(--acc);color:#111;border-radius:4px;padding:0 6px;font-weight:500}
+.bar{height:5px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--debt)}
+.empty{color:var(--mut);padding:22px 2px;font-size:15px}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:max(20px,env(safe-area-inset-bottom));height:56px;padding:0 28px;border-radius:28px;border:0;background:var(--acc);color:#111;font:700 17px "Hanken Grotesk",sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer}
+.status{font-size:12px;color:var(--mut);margin-top:22px;text-align:center}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.sheet.on{display:flex}
+.panel{background:var(--bg);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px max(4vw,16px) max(24px,env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.panel h3{margin:0 0 14px;font-size:20px}
+.seg{display:flex;background:var(--plane);border-radius:12px;padding:4px;margin-bottom:14px}
+.seg button{flex:1;height:40px;border:0;border-radius:9px;background:none;color:var(--ink);font:500 15px "Hanken Grotesk",sans-serif;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+input,select{width:100%;height:48px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:16px "Hanken Grotesk",sans-serif;padding:0 12px}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.acts{display:flex;gap:10px;margin-top:20px}
+.acts button{height:50px;border-radius:12px;font:700 16px "Hanken Grotesk",sans-serif;cursor:pointer;border:1px solid var(--line);background:none;color:var(--ink);padding:0 16px}
+.acts .save{flex:1;background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.acts .del{color:var(--debt)}
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.quick button{height:36px;border-radius:18px;border:1px solid var(--line);background:var(--plane);color:var(--ink);font:500 14px "Hanken Grotesk",sans-serif;padding:0 12px;cursor:pointer}
+@media(prefers-reduced-motion:reduce){.scale i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Borç ve Bakiye</h1>
+  <section class="hero" aria-live="polite">
+    <div class="lbl">Net durumun</div>
+    <div class="net" id="net">0 ₺</div>
+    <p class="verdict" id="verdict">Henüz kayıt yok.</p>
+    <div class="scale" aria-hidden="true"><i class="p" id="sp" style="width:50%"></i><i class="d" id="sd" style="width:50%"></i></div>
+    <div class="two">
+      <div class="p"><div class="lbl">Varlık (+)</div><b id="tp">0 ₺</b></div>
+      <div class="d" style="text-align:right"><div class="lbl">Toplam borç</div><b id="td">0 ₺</b></div>
+    </div>
+  </section>
+
+  <div class="tabs" role="group" aria-label="Liste">
+    <button id="tabD" aria-pressed="true">Borçlar</button>
+    <button id="tabP" aria-pressed="false">Varlıklar (+)</button>
+  </div>
+  <div class="sec"><h2 id="secT">Borçlar</h2><span id="secS"></span></div>
+  <ul id="list"></ul>
+  <p class="status" id="status">Yükleniyor…</p>
+</div>
+
+<button class="fab" id="add">+ Ekle</button>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="fT">
+  <form class="panel" id="form">
+    <h3 id="fT">Yeni kayıt</h3>
+    <div class="seg" role="group" aria-label="Tür">
+      <button type="button" id="kD" aria-pressed="true">Borç</button>
+      <button type="button" id="kP" aria-pressed="false">Varlık (+)</button>
+    </div>
+    <label for="fName">Ad</label>
+    <input id="fName" required maxlength="40" placeholder="Örn. Bonus Kart, İhtiyaç kredisi, Ziraat hesabı">
+    <label for="fType">Çeşit</label>
+    <select id="fType"></select>
+    <label for="fAmt">Tutar (₺)</label>
+    <input id="fAmt" inputmode="decimal" required placeholder="0">
+    <div class="quick" id="quick" hidden>
+      <button type="button" data-q="-1000">−1.000</button><button type="button" data-q="-500">−500</button>
+      <button type="button" data-q="500">+500</button><button type="button" data-q="1000">+1.000</button>
+    </div>
+    <div class="g2" id="debtX">
+      <div><label for="fLim">Kart limiti (₺)</label><input id="fLim" inputmode="decimal" placeholder="İsteğe bağlı"></div>
+      <div><label for="fDue">Son ödeme günü</label><input id="fDue" inputmode="numeric" placeholder="1–31"></div>
+    </div>
+    <div id="minX"><label for="fMin">Asgari / aylık taksit (₺)</label><input id="fMin" inputmode="decimal" placeholder="İsteğe bağlı"></div>
+    <label for="fNote">Not</label>
+    <input id="fNote" maxlength="80" placeholder="İsteğe bağlı">
+    <div class="acts">
+      <button type="button" class="del" id="del" hidden>Sil</button>
+      <button type="button" id="cancel">Vazgeç</button>
+      <button type="submit" class="save">Kaydet</button>
+    </div>
+  </form>
+</div>
+
+<script>
+{
+const TYPES={d:["Kredi kartı","Kredi","KMH / Ek hesap","Kişiye borç","Fatura / Diğer"],p:["Banka hesabı","Nakit","Altın / Döviz","Yatırım","Alacak (bana borçlu)","Diğer"]};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const tl=n=>new Intl.NumberFormat("tr-TR",{maximumFractionDigits:2}).format(n)+" ₺";
+const num=v=>{v=String(v||"").trim().replace(/\s/g,"");if(!v)return 0;if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");else if(/^\d{1,3}(\.\d{3})+$/.test(v))v=v.replace(/\./g,"");const n=parseFloat(v);return isFinite(n)?n:0};
+let items=[],tab="d",kind="d",editId=null,ref=null,saving=Promise.resolve();
+const LS="borc-bakiye-v1";
+
+function dayIn(y,m,day){const last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(day,last))}
+function daysTo(day){if(!day)return null;const t=new Date();t.setHours(0,0,0,0);let d=dayIn(t.getFullYear(),t.getMonth(),day);if(d<t)d=dayIn(t.getFullYear(),t.getMonth()+1,day);return Math.round((d-t)/864e5)}
+
+function render(){
+  const D=items.filter(i=>i.k==="d"),P=items.filter(i=>i.k==="p");
+  const td=D.reduce((s,i)=>s+i.a,0),tp=P.reduce((s,i)=>s+i.a,0),net=tp-td;
+  $("td").textContent=tl(td);$("tp").textContent=tl(tp);
+  const n=$("net");n.textContent=(net>0?"+":"")+tl(net);n.className="net "+(net<0?"neg":net>0?"pos":"");
+  $("verdict").textContent=!items.length?"Henüz kayıt yok. Aşağıdan ilk kartını ekle.":net<0?`Varlıkların borcunun ${tl(-net)} gerisinde.`:net>0?`Tüm borçları kapatsan ${tl(net)} artıda kalırsın.`:"Borçların ve varlıkların eşit.";
+  const tot=td+tp||1;$("sp").style.width=(tp/tot*100)+"%";$("sd").style.width=(td/tot*100)+"%";
+  const L=(tab==="d"?D:P).slice().sort((a,b)=>b.a-a.a);
+  $("secT").textContent=tab==="d"?"Borçlar":"Varlıklar";
+  $("secS").textContent=L.length?`${L.length} kayıt · ${tl(tab==="d"?td:tp)}`:"";
+  if(tab==="d"){const mins=D.reduce((s,i)=>s+(i.m||0),0);if(mins)$("secS").textContent+=` · aylık ${tl(mins)}`}
+  $("list").innerHTML=L.length?L.map(i=>{
+    const dt=i.k==="d"?daysTo(i.due):null;
+    const bits=[esc(i.t)];
+    if(dt!==null)bits.push(dt<=5?`<span class="due">Ödeme ${dt===0?"bugün":dt+" gün sonra"}</span>`:`Son ödeme: ayın ${i.due}'i`);
+    if(i.m)bits.push("Aylık "+tl(i.m));
+    if(i.l)bits.push(`Limit ${tl(i.l)} · kalan ${tl(Math.max(0,i.l-i.a))}`);
+    if(i.n)bits.push(esc(i.n));
+    return `<li class="it" tabindex="0" data-id="${esc(i.id)}"><div class="row"><span class="nm">${esc(i.name)}</span><span class="am ${i.k}">${i.k==="d"?"−":"+"}${tl(i.a)}</span></div><div class="sub">${bits.map(b=>`<span>${b}</span>`).join("")}</div>${i.l?`<div class="bar"><i style="width:${Math.min(100,i.a/i.l*100)}%"></i></div>`:""}</li>`}).join(""):`<li class="empty">${tab==="d"?"Borç kaydı yok. Kredi kartı, kredi ya da kişiye borcunu ekle.":"Varlık yok. Banka hesabı, nakit ya da alacağını ekle."}</li>`;
+}
+
+function setTab(t){tab=t;$("tabD").setAttribute("aria-pressed",t==="d");$("tabP").setAttribute("aria-pressed",t==="p");render()}
+function setKind(k){kind=k;$("kD").setAttribute("aria-pressed",k==="d");$("kP").setAttribute("aria-pressed",k==="p");
+  const cur=$("fType").value;$("fType").innerHTML=TYPES[k].map(t=>`<option>${t}</option>`).join("");if(TYPES[k].includes(cur))$("fType").value=cur;
+  $("debtX").hidden=k!=="d";$("minX").hidden=k!=="d"}
+function open(id){
+  editId=id||null;const i=items.find(x=>x.id===id);
+  setKind(i?i.k:tab);$("fT").textContent=i?"Düzenle":"Yeni kayıt";
+  $("fName").value=i?.name||"";if(i)$("fType").value=i.t;$("fAmt").value=i?String(i.a).replace(".",","):"";
+  $("fLim").value=i?.l?String(i.l).replace(".",","):"";$("fDue").value=i?.due||"";$("fMin").value=i?.m?String(i.m).replace(".",","):"";$("fNote").value=i?.n||"";
+  $("del").hidden=!i;$("quick").hidden=!i;$("sheet").classList.add("on");setTimeout(()=>$(i?"fAmt":"fName").focus(),50)}
+function close(){$("sheet").classList.remove("on")}
+
+function persist(){
+  try{localStorage.setItem(LS,JSON.stringify(items))}catch(e){}
+  if(!ref)return;
+  const body={items:JSON.parse(JSON.stringify(items)),updated:new Date().toISOString()};
+  saving=saving.then(()=>ref.set(body)).then(()=>{$("status").textContent="Kaydedildi · tüm cihazlarında güncel"}).catch(e=>{$("status").textContent=e&&e.code==="quota_exceeded"?"Depolama dolu, bazı kayıtları sil.":"Kaydedilemedi, bu cihazda saklandı."});
+}
+
+$("form").addEventListener("submit",e=>{e.preventDefault();
+  const name=$("fName").value.trim();if(!name)return;
+  const due=parseInt($("fDue").value,10);
+  const rec={id:editId||Date.now().toString(36)+Math.random().toString(36).slice(2,6),k:kind,name,t:$("fType").value,a:Math.abs(num($("fAmt").value)),
+    l:kind==="d"?num($("fLim").value)||0:0,due:kind==="d"&&due>=1&&due<=31?due:0,m:kind==="d"?num($("fMin").value)||0:0,n:$("fNote").value.trim()};
+  items=editId?items.map(x=>x.id===editId?rec:x):items.concat(rec);
+  close();setTab(kind);persist()});
+$("del").addEventListener("click",()=>{if($("del").dataset.sure!=="1"){$("del").dataset.sure="1";$("del").textContent="Emin misin?";return}
+  items=items.filter(x=>x.id!==editId);close();render();persist()});
+$("cancel").addEventListener("click",close);
+$("sheet").addEventListener("click",e=>{if(e.target.id==="sheet")close()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
+$("quick").addEventListener("click",e=>{const q=e.target.dataset.q;if(!q)return;$("fAmt").value=String(Math.max(0,num($("fAmt").value)+Number(q))).replace(".",",")});
+$("add").addEventListener("click",()=>open());
+$("kD").addEventListener("click",()=>setKind("d"));$("kP").addEventListener("click",()=>setKind("p"));
+$("tabD").addEventListener("click",()=>setTab("d"));$("tabP").addEventListener("click",()=>setTab("p"));
+const pick=e=>{const li=e.target.closest("li.it");if(li){$("del").dataset.sure="";$("del").textContent="Sil";open(li.dataset.id)}};
+$("list").addEventListener("click",pick);$("list").addEventListener("keydown",e=>{if(e.key==="Enter")pick(e)});
+
+try{const s=JSON.parse(localStorage.getItem(LS)||"[]");if(Array.isArray(s))items=s}catch(e){}
+setKind("d");render();
+
+$("status").textContent="Veriler bu telefonda saklanıyor.";
+window.__back=()=>{if($("sheet").classList.contains("on")){close();return true}return false};
+}
+</script>
+</body>
+</html>
