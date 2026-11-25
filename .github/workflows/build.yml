@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,3 +27,9 @@ jobs:
         with:
           name: BorcBakiye-apk
           path: BorcBakiye.apk
+      - name: Sürüm olarak yayınla
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete son -y --cleanup-tag || true
+          gh release create son BorcBakiye.apk --title "Borç ve Bakiye (son sürüm)" --notes "Telefona indirip kur. Derleme: ${{ github.sha }}" --target ${{ github.sha }}
